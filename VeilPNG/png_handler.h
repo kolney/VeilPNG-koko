@@ -3,7 +3,12 @@
 #ifndef PNG_HANDLER_H
 #define PNG_HANDLER_H
 
+#ifdef _WIN32
 #include <tchar.h>
+#else
+#include "../compat/tchar.h"
+#endif
+#include <stddef.h>
 
 // Function prototypes
 int read_file(const TCHAR* path, unsigned char** data, size_t* size);

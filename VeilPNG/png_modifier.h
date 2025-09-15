@@ -3,8 +3,11 @@
 #ifndef PNG_MODIFIER_H
 #define PNG_MODIFIER_H
 
-#include <stddef.h>
+#ifdef _WIN32
 #include <tchar.h>
+#else
+#include "../compat/tchar.h"
+#endif
 
 #ifdef __cplusplus
 extern "C" {

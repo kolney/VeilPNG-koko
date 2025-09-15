@@ -7,6 +7,7 @@
 #include <zlib.h>
 #include <tchar.h>
 #include <stdio.h>  // Include for file I/O functions
+#include "../compat/compat.h"
 
 #define PNG_SIG_SIZE 8
 #define CHUNK_HEADER_SIZE 8

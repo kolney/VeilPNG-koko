@@ -1,0 +1,9 @@
+/workspace/build/CMakeFiles/veilpng_cli.dir
+/workspace/build/CMakeFiles/edit_cache.dir
+/workspace/build/CMakeFiles/rebuild_cache.dir
+/workspace/build/VeilPNG/CMakeFiles/veilpng_core.dir
+/workspace/build/VeilPNG/CMakeFiles/edit_cache.dir
+/workspace/build/VeilPNG/CMakeFiles/rebuild_cache.dir
+/workspace/build/compat/CMakeFiles/compat_lib.dir
+/workspace/build/compat/CMakeFiles/edit_cache.dir
+/workspace/build/compat/CMakeFiles/rebuild_cache.dir

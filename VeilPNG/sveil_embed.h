@@ -1,17 +1,13 @@
-#ifndef sveil_EMBED_H
-#define sveil_EMBED_H
+#ifndef SVEIL_EMBED_H
+#define SVEIL_EMBED_H
 
-#include <windows.h>
+#ifdef _WIN32
 #include <tchar.h>
-
-#ifdef __cplusplus
-extern "C" {
+#else
+#include "../compat/tchar.h"
 #endif
 
-	int sveil_embed_data_in_png(const TCHAR* png_path, const TCHAR* data_path, const TCHAR* output_path, const TCHAR* password);
+int sveil_embed_data_in_png(const TCHAR* png_path, const TCHAR* data_path, const TCHAR* output_path, const TCHAR* password);
+const TCHAR* get_sveil_error_message(void);
 
-#ifdef __cplusplus
-}
-#endif
-
-#endif // sveil_EMBED_H
+#endif // SVEIL_EMBED_H

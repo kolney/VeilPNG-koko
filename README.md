@@ -28,6 +28,7 @@ TABLE OF CONTENTS:
 4. Security Considerations
 5. Installation
 6. Usage Instructions
+   - Cross-platform (macOS/Linux) CLI
    - Embedding Data into a PNG Image
    - Extracting Data from a PNG Image
 7. Limitations
@@ -140,10 +141,31 @@ Use sVeil when:
 
 5. INSTALLATION:
 
-### Prerequisites:
+### Prerequisites (Windows GUI):
 
 - **Operating System**: Windows 7 or later (64-bit recommended).
-- **Dependencies**: All required libraries are included; no additional installations needed.
+- **Dependencies**: Included in the Visual Studio solution.
+
+### Prerequisites (macOS/Linux CLI):
+
+- CMake 3.16+
+- zlib development headers
+- OpenSSL (libcrypto) development headers
+
+On Ubuntu/Debian:
+```bash
+sudo apt-get update
+sudo apt-get install -y build-essential cmake zlib1g-dev libssl-dev
+```
+
+On macOS (Homebrew):
+```bash
+brew install cmake openssl@3
+```
+If CMake cannot find OpenSSL on macOS:
+```bash
+cmake -S . -B build -DOPENSSL_ROOT_DIR=$(brew --prefix openssl@3)
+```
 
 ### Installation Steps:
 
@@ -155,6 +177,23 @@ Use sVeil when:
 ---------------------------------------
 
 6. USAGE INSTRUCTIONS:
+
+### Cross-platform (macOS/Linux) CLI:
+
+Build:
+```bash
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build -j
+```
+
+Run:
+```bash
+# Embed a file into a PNG
+./build/veilpng_cli embed input.png secret.bin output.png myPassword123!
+
+# Extract a file from a PNG into a directory
+./build/veilpng_cli extract output.png ./out myPassword123!
+```
 
 ### Embedding Data into a PNG Image:
 
@@ -196,7 +235,7 @@ Use sVeil when:
 - **Password Recovery**: Passwords are not stored; if you forget your password, the data cannot be recovered.
 - **Image Editors**: Some image editors or platforms may strip custom chunks (VeilPNG) or alter the deflate stream (sVeil), potentially removing the hidden data.
 - **Image Compatibility**: sVeil may cause minor image alterations that could affect compatibility with some image viewers.
-- **Platform Support**: Currently supports only Windows OS.
+- **Platform Support**: Windows GUI supported; cross-platform CLI supports macOS/Linux.
 
 ---------------------------------------
 
