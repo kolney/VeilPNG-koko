@@ -1,0 +1,2 @@
+/usr/bin/ar qc libveilpng_core.a CMakeFiles/veilpng_core.dir/data_embed.c.o CMakeFiles/veilpng_core.dir/encryption.c.o CMakeFiles/veilpng_core.dir/png_handler.c.o CMakeFiles/veilpng_core.dir/sveil_common.c.o CMakeFiles/veilpng_core.dir/sveil_embed.c.o CMakeFiles/veilpng_core.dir/sveil_extract.c.o CMakeFiles/veilpng_core.dir/sveil_png_utils.c.o
+/usr/bin/ranlib libveilpng_core.a

@@ -3,7 +3,12 @@
 #ifndef sveil_COMMON_H
 #define sveil_COMMON_H
 
+#ifdef _WIN32
 #include <tchar.h>
+#else
+#include "../compat/tchar.h"
+#endif
+#include <stddef.h>
 
 #ifdef __cplusplus
 extern "C" {

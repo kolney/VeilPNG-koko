@@ -2,19 +2,25 @@
 
 #define _CRT_SECURE_NO_WARNINGS
 #define WIN32_LEAN_AND_MEAN
+#ifdef _WIN32
 #include <winsock2.h>
 #include <windows.h>
 #pragma comment(lib, "ws2_32.lib")
+#endif
 
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <tchar.h>
 #include <zlib.h>
+#include "../compat/compat.h"
+#ifdef _WIN32
 #pragma comment(lib, "zlibstat.lib")
+#endif
 
 #include "sveil_png_utils.h"
 #include "sveil_common.h"
+#include "../compat/compat.h"
 
 #define CHUNK_HEADER_SIZE 8  // Length (4 bytes) + Type (4 bytes)
 #define CHUNK_CRC_SIZE 4

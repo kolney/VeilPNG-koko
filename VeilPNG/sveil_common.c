@@ -5,8 +5,8 @@
 #include "sveil_common.h"
 #include <stdio.h>
 #include <stdarg.h>
-#include <windows.h>  // For SecureZeroMemory
 #include <tchar.h>
+#include "../compat/compat.h"
 
 #define ERROR_MESSAGE_BUFFER_SIZE 512
 static TCHAR error_message[ERROR_MESSAGE_BUFFER_SIZE];

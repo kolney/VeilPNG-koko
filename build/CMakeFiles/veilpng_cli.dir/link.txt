@@ -1,0 +1,1 @@
+/usr/bin/cc -O3 -DNDEBUG -Xlinker --dependency-file=CMakeFiles/veilpng_cli.dir/link.d CMakeFiles/veilpng_cli.dir/VeilPNG/cli_main.c.o -o veilpng_cli  VeilPNG/libveilpng_core.a compat/libcompat_lib.a /usr/lib/x86_64-linux-gnu/libz.so /usr/lib/x86_64-linux-gnu/libcrypto.so

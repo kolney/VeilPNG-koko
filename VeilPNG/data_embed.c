@@ -6,14 +6,16 @@
 #include <string.h>
 #include <tchar.h>
 #include <time.h>    // Include time.h for time()
+#include "../compat/compat.h"
 
+#ifdef _WIN32
 // Include Windows headers without conflicting macros
 #define WIN32_NO_STATUS
 #include <windows.h>
 #undef WIN32_NO_STATUS
-
 #include <bcrypt.h>
 #pragma comment(lib, "bcrypt.lib")
+#endif
 
 #include "data_embed.h"
 #include "png_handler.h"
@@ -87,7 +89,8 @@ int embed_data_in_png(const TCHAR* png_path, const TCHAR* data_path, const TCHAR
         _tcscpy_s(last_error_message, _countof(last_error_message), _T("Memory allocation failure."));
         return -1;
     }
-    strcpy_s(file_name_utf8, file_name_utf8_len, file_name);
+    strncpy(file_name_utf8, file_name, file_name_utf8_len);
+    file_name_utf8[file_name_utf8_len - 1] = '\0';
 #endif
 
     unsigned int file_name_length = (unsigned int)(file_name_utf8_len - 1);
@@ -162,6 +165,7 @@ int embed_data_in_png(const TCHAR* png_path, const TCHAR* data_path, const TCHAR
 
     // Generate random padding
     if (padding_size > 0) {
+#ifdef _WIN32
         if (!BCRYPT_SUCCESS(BCryptGenRandom(NULL, padded_buffer + total_buffer_size, (ULONG)padding_size, BCRYPT_USE_SYSTEM_PREFERRED_RNG))) {
             free(png_data);
             free(buffer);
@@ -169,6 +173,11 @@ int embed_data_in_png(const TCHAR* png_path, const TCHAR* data_path, const TCHAR
             _tcscpy_s(last_error_message, _countof(last_error_message), _T("Random generation failed."));
             return -1;
         }
+#else
+        for (size_t i = 0; i < padding_size; ++i) {
+            padded_buffer[total_buffer_size + i] = (unsigned char)(rand() & 0xFF);
+        }
+#endif
     }
 
     total_buffer_size += padding_size;
@@ -261,7 +270,12 @@ int embed_data_in_png(const TCHAR* png_path, const TCHAR* data_path, const TCHAR
 
 // Function to extract data from PNG
 int extract_data_from_png(const TCHAR* png_path, const TCHAR* output_folder, const TCHAR* password, TCHAR* extracted_file_name) {
-    ULONGLONG startTime = GetTickCount64();  // Start time for timing attack mitigation
+    ULONGLONG startTime = 0;
+#ifdef _WIN32
+    startTime = GetTickCount64();  // Start time for timing attack mitigation
+#else
+    startTime = compat_get_tick_count64();
+#endif
 
     // Step 1: Read PNG data
     unsigned char* png_data = NULL;
@@ -290,9 +304,16 @@ int extract_data_from_png(const TCHAR* png_path, const TCHAR* output_folder, con
         free(chunk_data);
 
         // Ensure consistent response time
-        ULONGLONG elapsedTime = GetTickCount64() - startTime;
+        ULONGLONG elapsedTime = 0;
+#ifdef _WIN32
+        elapsedTime = GetTickCount64() - startTime;
         ULONGLONG delay = (elapsedTime < 5000) ? (5000 - elapsedTime) : 0;
         Sleep((DWORD)delay);
+#else
+        elapsedTime = compat_get_tick_count64() - startTime;
+        ULONGLONG delay = (elapsedTime < 5000) ? (5000 - elapsedTime) : 0;
+        compat_sleep_ms((unsigned int)delay);
+#endif
 
         // Provide a generic error message
         _tcscpy_s(last_error_message, _countof(last_error_message), _T("An error occurred during decryption."));
@@ -408,12 +429,13 @@ int extract_data_from_png(const TCHAR* png_path, const TCHAR* output_folder, con
 #ifdef UNICODE
     MultiByteToWideChar(CP_UTF8, 0, file_name_utf8, -1, output_file_name, MAX_PATH);
 #else
-    strcpy_s(output_file_name, MAX_PATH, file_name_utf8);
+    strncpy(output_file_name, file_name_utf8, MAX_PATH);
+    output_file_name[MAX_PATH - 1] = '\0';
 #endif
     free(file_name_utf8);
 
     // Step 7: Create full output file path
-    _stprintf_s(extracted_file_name, MAX_PATH, _T("%s\\%s"), output_folder, output_file_name);
+    compat_join_path(output_folder, output_file_name, extracted_file_name, MAX_PATH);
 
     // Step 8: Write extracted data to output file
     size_t file_data_size = remaining_size;
@@ -427,9 +449,16 @@ int extract_data_from_png(const TCHAR* png_path, const TCHAR* output_folder, con
     free(decompressed_data);
 
     // Ensure consistent response time
-    ULONGLONG elapsedTime = GetTickCount64() - startTime;
+    ULONGLONG elapsedTime = 0;
+#ifdef _WIN32
+    elapsedTime = GetTickCount64() - startTime;
     ULONGLONG delay = (elapsedTime < 5000) ? (5000 - elapsedTime) : 0;
     Sleep((DWORD)delay);
+#else
+    elapsedTime = compat_get_tick_count64() - startTime;
+    ULONGLONG delay = (elapsedTime < 5000) ? (5000 - elapsedTime) : 0;
+    compat_sleep_ms((unsigned int)delay);
+#endif
 
     // Success
     return 0;

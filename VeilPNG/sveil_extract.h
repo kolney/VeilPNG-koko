@@ -1,10 +1,13 @@
 // sveil_extract.h
 
-#ifndef sveil_EXTRACT_H
-#define sveil_EXTRACT_H
+#ifndef SVEIL_EXTRACT_H
+#define SVEIL_EXTRACT_H
 
-#include <windows.h>
+#ifdef _WIN32
 #include <tchar.h>
+#else
+#include "../compat/tchar.h"
+#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -16,4 +19,4 @@ extern "C" {
 }
 #endif
 
-#endif // sveil_EXTRACT_H
+#endif // SVEIL_EXTRACT_H

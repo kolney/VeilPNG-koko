@@ -3,7 +3,11 @@
 #ifndef ENCRYPTION_H
 #define ENCRYPTION_H
 
+#ifdef _WIN32
 #include <tchar.h>
+#else
+#include "../compat/tchar.h"
+#endif
 #include <stddef.h>
 
 int encrypt_data(unsigned char* plaintext, size_t plaintext_len, const TCHAR* password,

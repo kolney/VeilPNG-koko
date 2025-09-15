@@ -3,11 +3,13 @@
 #define _CRT_SECURE_NO_WARNINGS
 #define WIN32_LEAN_AND_MEAN
 
+#ifdef _WIN32
 #include <winsock2.h>
 #include <windows.h>
 #include <ws2tcpip.h>
 #include <time.h>
 #pragma comment(lib, "ws2_32.lib")
+#endif
 
 #include <stdint.h>
 #include <stdio.h>
@@ -15,37 +17,26 @@
 #include <string.h>
 #include <tchar.h>
 #include <zlib.h>
+#include "../compat/compat.h"
+#ifdef _WIN32
 #pragma comment(lib, "zlibstat.lib")
+#endif
 
 #include "sveil_embed.h"
 #include "sveil_common.h"
 #include "sveil_png_utils.h"
 
-// Include BCrypt for cryptographic functions
-#include <bcrypt.h>
-#pragma comment(lib, "bcrypt.lib")
+#include "encryption.h"
+#include "../compat/compat.h"
 
-#ifndef NTSTATUS
-typedef LONG NTSTATUS;
-#endif
-
-#ifndef STATUS_SUCCESS
-#define STATUS_SUCCESS ((NTSTATUS)0x00000000L)
-#endif
-
-#ifndef STATUS_UNSUCCESSFUL
-#define STATUS_UNSUCCESSFUL ((NTSTATUS)0xC0000001L)
-#endif
+// Remove Windows NTSTATUS macros on non-Windows
 
 #define PNG_SIGNATURE_SIZE 8
 #define CHUNK_HEADER_SIZE 8  // Length (4 bytes) + Type (4 bytes)
 #define CHUNK_CRC_SIZE 4
 #define MAGIC_NUMBER 0xDEADBEEF
 
-// Function prototypes for encryption
-static int encrypt_data(const unsigned char* plaintext, size_t plaintext_len, const TCHAR* password,
-    unsigned char** encrypted_data, size_t* encrypted_len);
-static int derive_key_from_password(const TCHAR* password, unsigned char* salt, unsigned char** key, DWORD* key_len);
+// Use shared encryption API from encryption.h
 
 int sveil_embed_data_in_png(const TCHAR* png_path, const TCHAR* data_path, const TCHAR* output_path, const TCHAR* password) {
     unsigned char* png_data = NULL;
@@ -149,18 +140,31 @@ int sveil_embed_data_in_png(const TCHAR* png_path, const TCHAR* data_path, const
     }
 
     // Convert filename to UTF-8
-    int filename_utf8_length = WideCharToMultiByte(CP_UTF8, 0, filename, -1, NULL, 0, NULL, NULL);
+    int filename_utf8_length = 0;
+    char* filename_utf8 = NULL;
+#ifdef _WIN32
+    filename_utf8_length = WideCharToMultiByte(CP_UTF8, 0, filename, -1, NULL, 0, NULL, NULL);
     if (filename_utf8_length <= 0) {
         set_sveil_error_message(_T("Failed to convert filename to UTF-8."));
         goto cleanup;
     }
-    char* filename_utf8 = (char*)malloc(filename_utf8_length);
+    filename_utf8 = (char*)malloc(filename_utf8_length);
     if (!filename_utf8) {
         set_sveil_error_message(_T("Memory allocation failed for filename."));
         goto cleanup;
     }
     WideCharToMultiByte(CP_UTF8, 0, filename, -1, filename_utf8, filename_utf8_length, NULL, NULL);
     filename_utf8_length--; // Exclude null terminator
+#else
+    filename_utf8_length = (int)strlen(filename);
+    filename_utf8 = (char*)malloc(filename_utf8_length + 1);
+    if (!filename_utf8) {
+        set_sveil_error_message(_T("Memory allocation failed for filename."));
+        goto cleanup;
+    }
+    memcpy(filename_utf8, filename, filename_utf8_length);
+    filename_utf8[filename_utf8_length] = '\0';
+#endif
 
     // Prepare the combined data buffer: [filename_length][filename][data]
     unsigned int filename_length = (unsigned int)filename_utf8_length;
@@ -186,7 +190,7 @@ int sveil_embed_data_in_png(const TCHAR* png_path, const TCHAR* data_path, const
     // Encrypt the combined data using AES-GCM
     unsigned char* encrypted_data = NULL;
     size_t encrypted_size = 0;
-    if (encrypt_data(plaintext, plaintext_size, password, &encrypted_data, &encrypted_size) != 0) {
+    if (encrypt_data((unsigned char*)plaintext, plaintext_size, password, &encrypted_data, &encrypted_size) != 0) {
         set_sveil_error_message(_T("Failed to encrypt data."));
         free(plaintext);
         goto cleanup;
@@ -275,160 +279,4 @@ cleanup:
     return result;
 }
 
-// Encryption function using AES-GCM
-static int encrypt_data(const unsigned char* plaintext, size_t plaintext_len, const TCHAR* password,
-    unsigned char** encrypted_data, size_t* encrypted_len) {
-    BCRYPT_ALG_HANDLE hAesAlg = NULL;
-    BCRYPT_KEY_HANDLE hKey = NULL;
-    NTSTATUS status = STATUS_UNSUCCESSFUL;
-    unsigned char* key = NULL;
-    DWORD key_len = 0;
-    unsigned char iv[12]; // Recommended IV size for AES-GCM is 12 bytes
-    DWORD iv_size = sizeof(iv);
-    unsigned char tag[16]; // Authentication tag size
-    DWORD tag_size = sizeof(tag);
-    DWORD ciphertext_len = 0;
-    DWORD result_len = 0;
-
-    // Generate a random IV
-    if (!BCRYPT_SUCCESS(BCryptGenRandom(NULL, iv, iv_size, BCRYPT_USE_SYSTEM_PREFERRED_RNG))) {
-        set_sveil_error_message(_T("Failed to generate IV."));
-        goto cleanup;
-    }
-
-    // Derive key from password
-    unsigned char salt[16];
-    if (!BCRYPT_SUCCESS(BCryptGenRandom(NULL, salt, sizeof(salt), BCRYPT_USE_SYSTEM_PREFERRED_RNG))) {
-        set_sveil_error_message(_T("Failed to generate salt."));
-        goto cleanup;
-    }
-    if (derive_key_from_password(password, salt, &key, &key_len) != 0) {
-        set_sveil_error_message(_T("Failed to derive key from password."));
-        goto cleanup;
-    }
-
-    // Open AES-GCM algorithm provider
-    if (!BCRYPT_SUCCESS(status = BCryptOpenAlgorithmProvider(&hAesAlg, BCRYPT_AES_ALGORITHM, NULL, 0))) {
-        set_sveil_error_message(_T("Failed to open AES algorithm provider."));
-        goto cleanup;
-    }
-
-    // Set chaining mode to GCM
-    if (!BCRYPT_SUCCESS(status = BCryptSetProperty(hAesAlg, BCRYPT_CHAINING_MODE, (PUCHAR)BCRYPT_CHAIN_MODE_GCM,
-        (ULONG)sizeof(BCRYPT_CHAIN_MODE_GCM), 0))) {
-        set_sveil_error_message(_T("Failed to set chaining mode to GCM."));
-        goto cleanup;
-    }
-
-    // Generate key object
-    if (!BCRYPT_SUCCESS(status = BCryptGenerateSymmetricKey(hAesAlg, &hKey, NULL, 0, key, key_len, 0))) {
-        set_sveil_error_message(_T("Failed to generate symmetric key."));
-        goto cleanup;
-    }
-
-    // Prepare the authentication info structure
-    BCRYPT_AUTHENTICATED_CIPHER_MODE_INFO authInfo;
-    BCRYPT_INIT_AUTH_MODE_INFO(authInfo);
-    authInfo.pbNonce = iv;
-    authInfo.cbNonce = iv_size;
-    authInfo.pbAuthData = NULL;
-    authInfo.cbAuthData = 0;
-    authInfo.pbTag = tag;
-    authInfo.cbTag = tag_size;
-    authInfo.pbMacContext = NULL;
-    authInfo.cbMacContext = 0;
-    authInfo.dwFlags = 0;
-
-    // Calculate the required buffer size for ciphertext
-    status = BCryptEncrypt(hKey, (PUCHAR)plaintext, (ULONG)plaintext_len, &authInfo, NULL, 0,
-        NULL, 0, &ciphertext_len, 0);
-
-    if (!BCRYPT_SUCCESS(status)) {
-        set_sveil_error_message(_T("Failed to calculate ciphertext size."));
-        goto cleanup;
-    }
-
-    // Allocate buffer for encrypted data
-    *encrypted_data = (unsigned char*)malloc(iv_size + sizeof(salt) + ciphertext_len + tag_size);
-    if (!*encrypted_data) {
-        set_sveil_error_message(_T("Memory allocation failed for encrypted data."));
-        goto cleanup;
-    }
-
-    // Copy IV and salt to the beginning of the encrypted data
-    memcpy(*encrypted_data, iv, iv_size);
-    memcpy(*encrypted_data + iv_size, salt, sizeof(salt));
-
-    // Perform encryption
-    status = BCryptEncrypt(hKey, (PUCHAR)plaintext, (ULONG)plaintext_len, &authInfo,
-        NULL, 0, *encrypted_data + iv_size + sizeof(salt),
-        ciphertext_len, &result_len, 0);
-
-    if (!BCRYPT_SUCCESS(status)) {
-        set_sveil_error_message(_T("Failed to encrypt data."));
-        free(*encrypted_data);
-        *encrypted_data = NULL;
-        goto cleanup;
-    }
-
-    // Append the authentication tag after the ciphertext
-    memcpy(*encrypted_data + iv_size + sizeof(salt) + ciphertext_len, tag, tag_size);
-
-    *encrypted_len = iv_size + sizeof(salt) + ciphertext_len + tag_size;
-
-    // Success
-    status = STATUS_SUCCESS;
-
-cleanup:
-    SecureZeroMemory(key, key_len);
-    if (key) free(key);
-    if (hKey) BCryptDestroyKey(hKey);
-    if (hAesAlg) BCryptCloseAlgorithmProvider(hAesAlg, 0);
-
-    return BCRYPT_SUCCESS(status) ? 0 : -1;
-}
-
-// Key derivation function using PBKDF2
-static int derive_key_from_password(const TCHAR* password, unsigned char* salt, unsigned char** key, DWORD* key_len) {
-    BCRYPT_ALG_HANDLE hAlg = NULL;
-    NTSTATUS status = STATUS_UNSUCCESSFUL;
-    DWORD password_len = 0;
-#ifdef UNICODE
-    password_len = (DWORD)(wcslen(password) * sizeof(WCHAR));
-#else
-    password_len = (DWORD)(strlen(password));
-#endif
-    DWORD derived_key_len = 32; // AES-256 requires a 256-bit key
-
-    *key = (unsigned char*)malloc(derived_key_len);
-    if (!*key) {
-        set_sveil_error_message(_T("Memory allocation failed for derived key."));
-        goto cleanup;
-    }
-
-    // Open the algorithm provider
-    if (!BCRYPT_SUCCESS(status = BCryptOpenAlgorithmProvider(&hAlg, BCRYPT_SHA256_ALGORITHM, NULL, BCRYPT_ALG_HANDLE_HMAC_FLAG))) {
-        set_sveil_error_message(_T("Failed to open algorithm provider for key derivation."));
-        goto cleanup;
-    }
-
-    // Derive the key using PBKDF2
-    if (!BCRYPT_SUCCESS(status = BCryptDeriveKeyPBKDF2(hAlg, (PUCHAR)password, password_len,
-        salt, 16, 100000, *key, derived_key_len, 0))) {
-        set_sveil_error_message(_T("Failed to derive key using PBKDF2."));
-        goto cleanup;
-    }
-
-    *key_len = derived_key_len;
-
-    // Success
-    status = STATUS_SUCCESS;
-
-cleanup:
-    if (hAlg) BCryptCloseAlgorithmProvider(hAlg, 0);
-    if (!BCRYPT_SUCCESS(status) && *key) {
-        free(*key);
-        *key = NULL;
-    }
-    return BCRYPT_SUCCESS(status) ? 0 : -1;
-}
+// Removed Windows-only encrypt/derive implementations; using encryption.h now

@@ -3,9 +3,13 @@
 #ifndef INSTRUCTIONS_H
 #define INSTRUCTIONS_H
 
+#ifdef _WIN32
 #include <tchar.h>
+#else
+#include "../compat/tchar.h"
+#endif
 
-const TCHAR instructionsText[] =
+static const TCHAR* instructionsText =
 _T("=========================================================\r\n")
 _T("                     VeilPNG by Amadon\r\n")
 _T("=========================================================\r\n")
@@ -13,11 +17,6 @@ _T("\r\n")
 _T("\"Privacy is necessary for an open society in the electronic age.\"\r\n")
 _T("- Eric Hughes, A Cypherpunk's Manifesto\r\n")
 _T("\r\n")
-_T("VeilPNG is a utility designed to securely hide sensitive data within PNG images using strong encryption and compression techniques. ")
-_T("It allows you to embed any file into a PNG image by compressing the data and encrypting it with a password using AES-256-GCM encryption. ")
-_T("The encryption key is derived from your password using PBKDF2 with HMAC-SHA256, utilizing a unique salt and a high iteration count to enhance security against brute-force attacks. ")
-_T("The encrypted data is stored within a custom ancillary chunk in the PNG file format, ensuring the image remains valid while concealing the hidden content. ")
-_T("You can later extract the hidden file by providing the correct password, which also verifies data integrity through an HMAC-SHA256 hash. ")
 _T("Additionally, VeilPNG offers sVeil, which allows you to embed data directly into the compressed deflate stream within the IDAT chunk for enhanced stealth.\r\n")
 _T("\r\n")
 _T("**Use Veil** for embedding larger files or more data efficiently.\r\n")
@@ -149,14 +148,11 @@ _T("-----------------------------------------------------------\r\n")
 _T("Disclaimer\r\n")
 _T("-----------------------------------------------------------\r\n")
 _T("\r\n")
-_T("VeilPNG is provided \"as is\", without warranty of any kind, express or implied. Use this software at your own risk. ")
 _T("By using VeilPNG, you agree to the terms and conditions outlined in the MIT License.\r\n")
 _T("\r\n")
 _T("For more information, please refer to the LICENSE file included with this software.\r\n")
 _T("\r\n")
 _T("-----------------------------------------------------------\r\n")
-_T("Enjoy using VeilPNG to secure your data!\r\n")
-_T("-----------------------------------------------------------\r\n")
-;
+_T("Enjoy using VeilPNG to secure your data!\r\n");
 
 #endif // INSTRUCTIONS_H
